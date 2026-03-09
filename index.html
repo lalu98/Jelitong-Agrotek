@@ -600,77 +600,61 @@ function formatMessage(text) {
   return html;
 }
 
-function showTyping() {
+<script>
+// Tempelkan kunci panjang dari Google AI Studio di antara tanda kutip di bawah ini
+const API_KEY = AIzaSyChNtgJ8fDzH_WGH1m1vCHGayyPys9RUjs
+
+const SYSTEM_PROMPT = `Anda adalah Jelitong Agrotek — ahli pertanian di NTB. 
+Gunakan bahasa sederhana dan berikan langkah praktis untuk petani.`;
+
+let isLoading = false;
+
+function sendQuick(text) {
+  document.getElementById('userInput').value = text;
+  sendMessage();
+}
+
+function addMessage(role, text) {
   const container = document.getElementById('chatMessages');
   const div = document.createElement('div');
-  div.className = 'msg bot';
-  div.id = 'typingIndicator';
-
+  div.className = `msg ${role}`;
   const avatar = document.createElement('div');
   avatar.className = 'msg-avatar';
-  avatar.textContent = '🌱';
-
+  avatar.textContent = role === 'bot' ? '🌱' : '👤';
   const bubble = document.createElement('div');
   bubble.className = 'msg-bubble';
-  bubble.innerHTML = '<div class="typing-indicator"><span></span><span></span><span></span></div>';
-
+  bubble.innerHTML = text.replace(/\n/g, '<br>').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
   div.appendChild(avatar);
   div.appendChild(bubble);
   container.appendChild(div);
   container.scrollTop = container.scrollHeight;
 }
 
-function removeTyping() {
-  const el = document.getElementById('typingIndicator');
-  if (el) el.remove();
-}
-
 async function sendMessage() {
   if (isLoading) return;
-
   const input = document.getElementById('userInput');
   const text = input.value.trim();
   if (!text) return;
 
   input.value = '';
-  input.style.height = 'auto';
-
   addMessage('user', text);
-
-  conversationHistory.push({ role: 'user', content: text });
-
   isLoading = true;
-  document.getElementById('sendBtn').disabled = true;
-  showTyping();
-
+  
   try {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 1000,
-        system: SYSTEM_PROMPT,
-        messages: conversationHistory
+        contents: [{ parts: [{ text: SYSTEM_PROMPT + "\n\nPertanyaan petani: " + text }] }]
       })
     });
 
     const data = await response.json();
-    const reply = data.content?.map(c => c.text || '').join('') || 'Maaf, ada gangguan. Coba lagi ya, Pak/Bu.';
-
-    conversationHistory.push({ role: 'assistant', content: reply });
-
-    removeTyping();
+    const reply = data.candidates[0].content.parts[0].text;
     addMessage('bot', reply);
   } catch (err) {
-    removeTyping();
-    addMessage('bot', '⚠️ Maaf, koneksi bermasalah. Pastikan internet Anda aktif dan coba lagi.');
+    addMessage('bot', '⚠️ Maaf, ada masalah koneksi. Pastikan API Key sudah benar.');
   }
-
   isLoading = false;
-  document.getElementById('sendBtn').disabled = false;
-  input.focus();
 }
 </script>
-</body>
-</html>
